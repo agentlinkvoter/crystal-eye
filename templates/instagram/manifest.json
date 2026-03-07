@@ -1,8 +1,8 @@
 {
-    "name": "facebook",
-    "display_name": "Facebook",
-    "description": "Facebook login page (2026 design)",
-    "redirect_url": "https://www.facebook.com/",
+    "name": "instagram",
+    "display_name": "Instagram",
+    "description": "Instagram login page (2026 design)",
+    "redirect_url": "https://www.instagram.com/",
     "auth_flow": "single",
     "max_attempts": 2,
     "fields": [
