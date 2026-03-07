@@ -14,6 +14,7 @@ from crystal_eye.repl.commands import CommandRegistry
 from crystal_eye.repl.completer import CrystalEyeCompleter
 from crystal_eye.server.runner import ServerRunner
 from crystal_eye.templates.registry import TemplateRegistry
+from crystal_eye.tunnel.base import TunnelProvider
 
 
 class CrystalEyeShell:
@@ -28,6 +29,7 @@ class CrystalEyeShell:
         self.template_registry = template_registry
         self.console = Console()
         self.server_runner: ServerRunner | None = None
+        self.tunnel: TunnelProvider | None = None
 
         # DB and repos are initialized when a campaign is set
         self.db: Database | None = None

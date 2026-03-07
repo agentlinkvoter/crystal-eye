@@ -18,9 +18,10 @@ class CrystalEyeCompleter(Completer):
         "clear", "help", "exit",
     ]
     SET_KEYS = [
-        "campaign", "template", "host", "port", "max_attempts",
-        "redirect_url", "verbose", "use_https", "enable_2fa",
+        "campaign", "template", "tunnel", "token", "host", "port",
+        "max_attempts", "redirect_url", "verbose", "use_https", "enable_2fa",
     ]
+    TUNNEL_PROVIDERS = ["cloudflared", "ngrok", "none"]
     CAMPAIGN_ACTIONS = ["list", "create", "delete"]
     EXPORT_FORMATS = ["csv", "json"]
 
@@ -61,6 +62,12 @@ class CrystalEyeCompleter(Completer):
         elif words[0] == "set" and len(words) == 3 and words[1] == "campaign":
             prefix = words[2]
             yield from self._campaign_names(prefix)
+
+        elif words[0] == "set" and len(words) == 3 and words[1] == "tunnel":
+            prefix = words[2]
+            for val in self.TUNNEL_PROVIDERS:
+                if val.startswith(prefix):
+                    yield Completion(val, start_position=-len(prefix))
 
         elif words[0] == "set" and len(words) == 3 and words[1] in ("verbose", "use_https", "enable_2fa"):
             prefix = words[2]

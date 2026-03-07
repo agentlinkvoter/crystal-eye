@@ -41,7 +41,8 @@ class CrystalEyeConfig(BaseModel):
     enable_2fa: bool = False
 
     # Tunnel
-    tunnel_provider: str | None = None
+    tunnel: str | None = None
+    token: str | None = None
 
     # Paths
     templates_dir: str | None = None
@@ -59,7 +60,8 @@ class CrystalEyeConfig(BaseModel):
         "redirect_url",
         "verbose",
         "enable_2fa",
-        "tunnel_provider",
+        "tunnel",
+        "token",
     }
 
     def is_ready(self) -> bool:
