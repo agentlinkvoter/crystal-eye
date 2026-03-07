@@ -14,7 +14,7 @@ class CrystalEyeCompleter(Completer):
 
     COMMANDS = [
         "setup", "set", "start", "stop", "show",
-        "creds", "campaigns", "export", "clear", "help", "exit",
+        "creds", "campaigns", "delete", "export", "clear", "help", "exit",
     ]
     SET_KEYS = [
         "template", "host", "port", "campaign", "max_attempts",
@@ -58,6 +58,16 @@ class CrystalEyeCompleter(Completer):
             for val in ["true", "false"]:
                 if val.startswith(prefix):
                     yield Completion(val, start_position=-len(prefix))
+
+        elif words[0] == "delete" and len(words) == 2:
+            from crystal_eye.config import get_state_dir
+
+            prefix = words[1]
+            campaigns_root = get_state_dir() / "campaigns"
+            if campaigns_root.is_dir():
+                for entry in campaigns_root.iterdir():
+                    if entry.is_dir() and entry.name.startswith(prefix):
+                        yield Completion(entry.name, start_position=-len(prefix))
 
         elif words[0] == "export" and len(words) == 2:
             prefix = words[1]

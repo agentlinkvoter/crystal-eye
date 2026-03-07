@@ -24,6 +24,7 @@ HELP_TEXT = {
     "stop": "Stop the running server.",
     "creds": "View captured credentials for the current campaign.",
     "campaigns": "List all campaigns with summary statistics.",
+    "delete": "Delete a campaign and all its data. Usage: delete <campaign_name>",
     "export": "Export credentials. Usage: export <csv|json>",
     "clear": "Clear the terminal screen.",
     "help": "Show help. Usage: help [command]",
@@ -44,6 +45,7 @@ class CommandRegistry:
             "stop": self.do_stop,
             "creds": self.do_creds,
             "campaigns": self.do_campaigns,
+            "delete": self.do_delete,
             "export": self.do_export,
             "clear": self.do_clear,
             "help": self.do_help,
@@ -266,6 +268,48 @@ class CommandRegistry:
                 db.close()
 
         display_campaigns_table(self.shell.console, campaigns, cred_counts)
+
+    def do_delete(self, name: str = None) -> None:
+        if name is None:
+            self.shell.console.print("[yellow]Usage:[/yellow] delete <campaign_name>")
+            return
+
+        from crystal_eye.config import get_state_dir
+
+        campaign_dir = get_state_dir() / "campaigns" / name
+        if not campaign_dir.is_dir():
+            self.shell.console.print(f"[red]Campaign not found:[/red] {name}")
+            return
+
+        # Confirm
+        try:
+            answer = input(f"  Delete campaign '{name}' and all its data? [y/N] ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            self.shell.console.print("\n[dim]Cancelled.[/dim]")
+            return
+
+        if answer not in ("y", "yes"):
+            self.shell.console.print("[dim]Cancelled.[/dim]")
+            return
+
+        # If deleting the active campaign, stop server and clear state
+        if self.shell.config.campaign == name:
+            if self.shell.server_runner and self.shell.server_runner.is_running:
+                self.shell.server_runner.stop()
+                self.shell.server_runner = None
+                self.shell.console.print("[yellow]Server stopped.[/yellow]")
+            if self.shell.db:
+                self.shell.db.close()
+                self.shell.db = None
+                self.shell.campaign_repo = None
+                self.shell.cred_repo = None
+            self.shell.config.campaign = None
+            self.shell.config._active_campaign_id = None
+
+        import shutil
+
+        shutil.rmtree(campaign_dir)
+        self.shell.console.print(f"[green]Deleted campaign:[/green] {name}")
 
     def do_export(self, fmt: str = "csv") -> None:
         if not self._require_campaign():

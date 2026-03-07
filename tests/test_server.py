@@ -53,7 +53,7 @@ async def test_credential_capture(facebook_app, captured_creds):
             follow_redirects=False,
         )
 
-    # First attempt: should show error page (not redirect yet)
+    # First attempt (no 2FA): should show error page
     assert response.status_code == 200
     assert "incorrect" in response.text.lower()
     assert len(captured_creds) == 1
@@ -102,44 +102,64 @@ def facebook_app_2fa(template_registry, captured_creds):
 
 
 @pytest.mark.asyncio
-async def test_2fa_flow(facebook_app_2fa, captured_creds):
+async def test_2fa_flow_shows_2fa_immediately(facebook_app_2fa, captured_creds):
+    """With 2FA enabled, login should go straight to 2FA page (no error first)."""
     transport = ASGITransport(app=facebook_app_2fa)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        # First login attempt - error page
-        await client.post(
+        response = await client.post(
             "/login",
             data={"email": "victim@test.com", "pass": "pw1"},
             follow_redirects=False,
         )
-        # Second attempt (max_attempts=2) - should show 2FA page
-        response = await client.post(
+
+    assert response.status_code == 200
+    assert "two-factor" in response.text.lower()
+    assert len(captured_creds) == 1
+
+
+@pytest.mark.asyncio
+async def test_2fa_first_round_returns_to_login(facebook_app_2fa, captured_creds):
+    """First 2FA code submission should show error and return to login (not redirect)."""
+    transport = ASGITransport(app=facebook_app_2fa)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Login → 2FA page
+        await client.post(
             "/login",
-            data={"email": "victim@test.com", "pass": "pw2"},
+            data={"email": "a@b.com", "pass": "pw1"},
+            follow_redirects=False,
+        )
+        # Submit 2FA code → should show error page (round 1 of 2)
+        response = await client.post(
+            "/2fa",
+            data={"code": "123456"},
             follow_redirects=False,
         )
 
     assert response.status_code == 200
-    assert "security code" in response.text.lower() or "two-factor" in response.text.lower()
-    assert len(captured_creds) == 2
+    assert "doesn't match" in response.text.lower() or "doesn&#" in response.text.lower()
+    assert len(captured_creds) == 2  # 1 login + 1 2FA
 
 
 @pytest.mark.asyncio
-async def test_2fa_code_capture(facebook_app_2fa, captured_creds):
+async def test_2fa_final_round_redirects(facebook_app_2fa, captured_creds):
+    """Second full round (login + 2FA) should redirect to real site."""
     transport = ASGITransport(app=facebook_app_2fa)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        # Go through login attempts to reach 2FA
+        # Round 1: login → 2FA → error
         await client.post("/login", data={"email": "a@b.com", "pass": "pw1"}, follow_redirects=False)
-        await client.post("/login", data={"email": "a@b.com", "pass": "pw2"}, follow_redirects=False)
+        await client.post("/2fa", data={"code": "111111"}, follow_redirects=False)
 
-        # Submit 2FA code
+        # Round 2: login → 2FA → redirect
+        await client.post("/login", data={"email": "a@b.com", "pass": "pw2"}, follow_redirects=False)
         response = await client.post(
             "/2fa",
-            data={"code": "483921"},
+            data={"code": "222222"},
             follow_redirects=False,
         )
 
     assert response.status_code == 303
     assert "facebook.com" in response.headers.get("location", "")
-    # 2 cred captures + 1 2FA code capture
-    assert len(captured_creds) == 3
-    assert captured_creds[2].fields["2fa_code"] == "483921"
+    # 2 logins + 2 2FA codes = 4 captures
+    assert len(captured_creds) == 4
+    assert captured_creds[1].fields["2fa_code"] == "111111"
+    assert captured_creds[3].fields["2fa_code"] == "222222"
