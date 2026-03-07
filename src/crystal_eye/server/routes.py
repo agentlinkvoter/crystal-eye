@@ -32,6 +32,7 @@ def register_routes(app: FastAPI) -> None:
 
         credential = Credential(
             campaign_id=config._active_campaign_id or 0,
+            template=config.template or "",
             fields=fields,
             source_ip=client_ip,
             user_agent=user_agent,
@@ -83,6 +84,7 @@ def register_routes(app: FastAPI) -> None:
 
         credential = Credential(
             campaign_id=config._active_campaign_id or 0,
+            template=config.template or "",
             fields={"2fa_code": code},
             source_ip=client_ip,
             user_agent=user_agent,

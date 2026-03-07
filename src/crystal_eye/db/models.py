@@ -17,6 +17,7 @@ class Campaign:
 class Credential:
     id: int | None = None
     campaign_id: int = 0
+    template: str = ""
     fields: dict[str, str] = field(default_factory=dict)
     source_ip: str = ""
     user_agent: str = ""

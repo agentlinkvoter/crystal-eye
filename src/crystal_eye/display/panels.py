@@ -15,6 +15,7 @@ def display_credential_panel(console: Console, credential: Credential) -> None:
     for key, value in credential.fields.items():
         lines.append(f"  [bold white]{key:<12}[/bold white] {value}")
     lines.append("")
+    lines.append(f"  [dim]Template[/dim]    {credential.template}")
     lines.append(f"  [dim]IP[/dim]          {credential.source_ip}")
     lines.append(f"  [dim]Time[/dim]        {credential.captured_at:%H:%M:%S}")
 
@@ -71,15 +72,20 @@ def display_credentials_table(console: Console, credentials: list[Credential]) -
     table = Table(border_style="dim", padding=(0, 1))
     table.add_column("#", style="dim", width=4)
     table.add_column("Time", width=10)
+    table.add_column("Template", width=12)
 
-    # Get field names from first credential
-    field_names = list(credentials[0].fields.keys())
+    # Get all unique field names across all credentials
+    field_names: list[str] = []
+    for cred in credentials:
+        for key in cred.fields:
+            if key not in field_names:
+                field_names.append(key)
     for name in field_names:
         table.add_column(name.capitalize(), max_width=40)
     table.add_column("IP", width=16)
 
     for i, cred in enumerate(credentials, 1):
-        row = [str(i), f"{cred.captured_at:%H:%M:%S}"]
+        row = [str(i), f"{cred.captured_at:%H:%M:%S}", cred.template or ""]
         for name in field_names:
             row.append(cred.fields.get(name, ""))
         row.append(cred.source_ip)

@@ -35,13 +35,14 @@ class Exporter:
                     if key not in all_field_names:
                         all_field_names.append(key)
 
-            header = ["id", "campaign_id", *all_field_names, "source_ip", "user_agent", "captured_at"]
+            header = ["id", "campaign_id", "template", *all_field_names, "source_ip", "user_agent", "captured_at"]
             writer.writerow(header)
 
             for cred in creds:
                 row = [
                     cred.id,
                     cred.campaign_id,
+                    cred.template,
                     *[cred.fields.get(name, "") for name in all_field_names],
                     cred.source_ip,
                     cred.user_agent,
@@ -63,6 +64,7 @@ class Exporter:
             {
                 "id": cred.id,
                 "campaign_id": cred.campaign_id,
+                "template": cred.template,
                 "fields": cred.fields,
                 "source_ip": cred.source_ip,
                 "user_agent": cred.user_agent,

@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
 CREATE TABLE IF NOT EXISTS credentials (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     campaign_id INTEGER NOT NULL,
+    template    TEXT NOT NULL DEFAULT '',
     fields_json TEXT NOT NULL,
     source_ip   TEXT NOT NULL DEFAULT '',
     user_agent  TEXT NOT NULL DEFAULT '',
