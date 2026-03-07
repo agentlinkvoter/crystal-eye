@@ -58,10 +58,10 @@ class CrystalEyeShell:
         self.cred_repo = CredentialRepository(self.db)
 
     def get_prompt(self) -> HTML:
-        if self.config.template:
+        if self.config.campaign:
             return HTML(
                 "<ansibrightcyan>crystal-eye</ansibrightcyan>"
-                " (<ansiyellow>{}</ansiyellow>) > ".format(self.config.template)
+                " (<ansiyellow>{}</ansiyellow>) > ".format(self.config.campaign)
             )
         return HTML("<ansibrightcyan>crystal-eye</ansibrightcyan> > ")
 

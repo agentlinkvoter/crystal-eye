@@ -31,8 +31,14 @@ def display_credential_panel(console: Console, credential: Credential) -> None:
 
 def display_config_table(console: Console, config: CrystalEyeConfig) -> None:
     """Display current configuration as a rich table."""
-    table = Table(show_header=False, border_style="dim", padding=(0, 2))
-    table.add_column("Key", style="bold cyan", width=16)
+    table = Table(
+        show_header=False,
+        show_edge=False,
+        box=None,
+        padding=(0, 2),
+        expand=True,
+    )
+    table.add_column("Key", style="bold cyan", width=16, no_wrap=True)
     table.add_column("Value")
 
     table.add_row("Campaign", config.campaign or "[dim]not set[/dim]")
@@ -48,7 +54,7 @@ def display_config_table(console: Console, config: CrystalEyeConfig) -> None:
     table.add_row("Campaign Dir", str(config.campaign_dir) if config.campaign_dir else "[dim]n/a[/dim]")
 
     console.print()
-    console.print(Panel(table, title="[bold]Configuration[/bold]", border_style="cyan"))
+    console.print(Panel(table, title="[bold]Configuration[/bold]", border_style="cyan", expand=True))
 
 
 def display_credentials_table(console: Console, credentials: list[Credential]) -> None:

@@ -5,6 +5,7 @@ import sys
 from typing import TYPE_CHECKING
 
 from rich.table import Table
+from rich.panel import Panel
 
 from crystal_eye.display.panels import (
     display_campaigns_table,
@@ -15,20 +16,18 @@ from crystal_eye.display.panels import (
 if TYPE_CHECKING:
     from crystal_eye.repl.shell import CrystalEyeShell
 
-HELP_TEXT = {
-    "setup": "Interactive wizard to configure campaign, template, server, and behavior settings.",
-    "set": "Set a config value. Usage: set <key> <value>\n"
-    "  Keys: template, campaign, host, port, max_attempts, redirect_url, verbose, use_https",
-    "show": "Display current configuration.",
-    "start": "Start the phishing server with current configuration.",
-    "stop": "Stop the running server.",
-    "creds": "View captured credentials for the current campaign.",
-    "campaigns": "List all campaigns with summary statistics.",
-    "delete": "Delete a campaign and all its data. Usage: delete <campaign_name>",
-    "export": "Export credentials. Usage: export <csv|json>",
-    "clear": "Clear the terminal screen.",
-    "help": "Show help. Usage: help [command]",
-    "exit": "Stop server if running and quit.",
+HELP_BRIEF = {
+    "setup": "Launch the interactive setup wizard",
+    "set": "Change a config value (try 'help set')",
+    "show": "Display current configuration",
+    "campaign": "Manage campaigns (try 'help campaign')",
+    "start": "Start the phishing server",
+    "stop": "Stop the running server",
+    "creds": "Show captured credentials",
+    "export": "Export credentials (csv or json)",
+    "clear": "Clear the screen",
+    "help": "Show help (detailed with command name)",
+    "exit": "Save and quit",
 }
 
 
@@ -41,11 +40,10 @@ class CommandRegistry:
             "setup": self.do_setup,
             "set": self.do_set,
             "show": self.do_show,
+            "campaign": self.do_campaign,
             "start": self.do_start,
             "stop": self.do_stop,
             "creds": self.do_creds,
-            "campaigns": self.do_campaigns,
-            "delete": self.do_delete,
             "export": self.do_export,
             "clear": self.do_clear,
             "help": self.do_help,
@@ -93,6 +91,7 @@ class CommandRegistry:
     def do_set(self, key: str = None, *values: str) -> None:
         if key is None:
             self.shell.console.print("[yellow]Usage:[/yellow] set <key> <value>")
+            self.shell.console.print("[dim]Type 'help set' to see all available keys.[/dim]")
             return
 
         if not values:
@@ -145,13 +144,16 @@ class CommandRegistry:
                 config.redirect_url = manifest.redirect_url
 
         elif key == "campaign":
-            config.campaign = value
-            self.shell.init_campaign_db()
-            self.shell.console.print(
-                f"[green]campaign[/green] = {value}\n"
-                f"[dim]Campaign dir: {config.campaign_dir}[/dim]"
-            )
-            return
+            from crystal_eye.config import get_state_dir
+
+            campaign_dir = get_state_dir() / "campaigns" / value
+            if campaign_dir.is_dir():
+                config.campaign = value
+                self.shell.init_campaign_db()
+            else:
+                config.campaign = value
+                self.shell.init_campaign_db()
+                self.shell.console.print(f"[dim]New campaign created: {config.campaign_dir}[/dim]")
 
         else:
             setattr(config, key, value)
@@ -160,6 +162,114 @@ class CommandRegistry:
 
     def do_show(self) -> None:
         display_config_table(self.shell.console, self.shell.config)
+
+    def do_campaign(self, action: str = None, *args: str) -> None:
+        if action is None:
+            self.shell.console.print("[yellow]Usage:[/yellow] campaign <list|create|delete> [name]")
+            self.shell.console.print("[dim]Type 'help campaign' for details.[/dim]")
+            return
+
+        action = action.lower()
+
+        if action == "list":
+            self._campaign_list()
+        elif action == "create":
+            self._campaign_create(*args)
+        elif action == "delete":
+            self._campaign_delete(*args)
+        else:
+            self.shell.console.print(
+                f"[red]Unknown action:[/red] {action}\n"
+                "[dim]Available: list, create, delete[/dim]"
+            )
+
+    def _campaign_list(self) -> None:
+        from crystal_eye.config import get_state_dir
+        from crystal_eye.db.engine import Database
+        from crystal_eye.db.repository import CampaignRepository, CredentialRepository
+        from crystal_eye.db.models import Campaign
+
+        campaigns_root = get_state_dir() / "campaigns"
+        if not campaigns_root.is_dir():
+            self.shell.console.print("[dim]No campaigns yet. Use 'set campaign <name>' to get started.[/dim]")
+            return
+
+        campaigns = []
+        cred_counts = {}
+
+        for entry in sorted(campaigns_root.iterdir()):
+            db_path = entry / "credentials.db"
+            if entry.is_dir() and db_path.exists():
+                db = Database(db_path)
+                db.connect()
+                camp_repo = CampaignRepository(db)
+                cred_repo = CredentialRepository(db)
+                camp = camp_repo.get_by_name(entry.name)
+                if camp:
+                    campaigns.append(camp)
+                    cred_counts[camp.id] = cred_repo.count_by_campaign(camp.id)
+                db.close()
+
+        if not campaigns:
+            self.shell.console.print("[dim]No campaigns yet. Use 'set campaign <name>' to get started.[/dim]")
+            return
+
+        display_campaigns_table(self.shell.console, campaigns, cred_counts)
+
+    def _campaign_create(self, *args: str) -> None:
+        if not args:
+            self.shell.console.print("[yellow]Usage:[/yellow] campaign create <name>")
+            return
+
+        name = " ".join(args)
+        self.shell.config.campaign = name
+        self.shell.init_campaign_db()
+        self.shell.console.print(
+            f"[green]Campaign created:[/green] {name}\n"
+            f"[dim]Campaign dir: {self.shell.config.campaign_dir}[/dim]"
+        )
+
+    def _campaign_delete(self, *args: str) -> None:
+        if not args:
+            self.shell.console.print("[yellow]Usage:[/yellow] campaign delete <name>")
+            return
+
+        name = " ".join(args)
+
+        from crystal_eye.config import get_state_dir
+
+        campaign_dir = get_state_dir() / "campaigns" / name
+        if not campaign_dir.is_dir():
+            self.shell.console.print(f"[red]Campaign not found:[/red] {name}")
+            return
+
+        try:
+            answer = input(f"  Delete campaign '{name}' and all its data? [y/N] ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            self.shell.console.print("\n[dim]Cancelled.[/dim]")
+            return
+
+        if answer not in ("y", "yes"):
+            self.shell.console.print("[dim]Cancelled.[/dim]")
+            return
+
+        if self.shell.config.campaign == name:
+            if self.shell.server_runner and self.shell.server_runner.is_running:
+                self.shell.server_runner.stop()
+                self.shell.server_runner = None
+                self.shell.console.print("[yellow]Server stopped.[/yellow]")
+            if self.shell.db:
+                self.shell.db.close()
+                self.shell.db = None
+                self.shell.campaign_repo = None
+                self.shell.cred_repo = None
+            self.shell.config.campaign = None
+            self.shell.config._active_campaign_id = None
+
+        import shutil
+
+        shutil.rmtree(campaign_dir)
+        self.shell.console.print(f"[green]Deleted campaign:[/green] {name}")
 
     def do_start(self) -> None:
         if self.shell.server_runner and self.shell.server_runner.is_running:
@@ -182,13 +292,11 @@ class CommandRegistry:
         if not self._require_campaign():
             return
 
-        # Create or resume campaign in DB
         campaign = self.shell.campaign_repo.get_by_name(config.campaign)
         if campaign is None:
             campaign = self.shell.campaign_repo.create(config.campaign, config.template)
         config._active_campaign_id = campaign.id
 
-        # Get template
         manifest = self.shell.template_registry.get(config.template)
         template_dir = self.shell.template_registry.get_template_dir(config.template)
 
@@ -238,80 +346,11 @@ class CommandRegistry:
             creds = self.shell.cred_repo.get_all()
         display_credentials_table(self.shell.console, creds)
 
-    def do_campaigns(self) -> None:
-        """List campaigns by scanning the campaigns directory."""
-        from crystal_eye.config import get_state_dir
-        from crystal_eye.db.engine import Database
-        from crystal_eye.db.repository import CampaignRepository, CredentialRepository
-
-        campaigns_root = get_state_dir() / "campaigns"
-        if not campaigns_root.is_dir():
-            self.shell.console.print("[dim]No campaigns yet.[/dim]")
+    def do_export(self, fmt: str = None) -> None:
+        if fmt is None:
+            self.shell.console.print("[yellow]Usage:[/yellow] export <csv|json>")
             return
 
-        from crystal_eye.db.models import Campaign
-
-        campaigns = []
-        cred_counts = {}
-
-        for entry in sorted(campaigns_root.iterdir()):
-            db_path = entry / "credentials.db"
-            if entry.is_dir() and db_path.exists():
-                db = Database(db_path)
-                db.connect()
-                camp_repo = CampaignRepository(db)
-                cred_repo = CredentialRepository(db)
-                camp = camp_repo.get_by_name(entry.name)
-                if camp:
-                    campaigns.append(camp)
-                    cred_counts[camp.id] = cred_repo.count_by_campaign(camp.id)
-                db.close()
-
-        display_campaigns_table(self.shell.console, campaigns, cred_counts)
-
-    def do_delete(self, name: str = None) -> None:
-        if name is None:
-            self.shell.console.print("[yellow]Usage:[/yellow] delete <campaign_name>")
-            return
-
-        from crystal_eye.config import get_state_dir
-
-        campaign_dir = get_state_dir() / "campaigns" / name
-        if not campaign_dir.is_dir():
-            self.shell.console.print(f"[red]Campaign not found:[/red] {name}")
-            return
-
-        # Confirm
-        try:
-            answer = input(f"  Delete campaign '{name}' and all its data? [y/N] ").strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            self.shell.console.print("\n[dim]Cancelled.[/dim]")
-            return
-
-        if answer not in ("y", "yes"):
-            self.shell.console.print("[dim]Cancelled.[/dim]")
-            return
-
-        # If deleting the active campaign, stop server and clear state
-        if self.shell.config.campaign == name:
-            if self.shell.server_runner and self.shell.server_runner.is_running:
-                self.shell.server_runner.stop()
-                self.shell.server_runner = None
-                self.shell.console.print("[yellow]Server stopped.[/yellow]")
-            if self.shell.db:
-                self.shell.db.close()
-                self.shell.db = None
-                self.shell.campaign_repo = None
-                self.shell.cred_repo = None
-            self.shell.config.campaign = None
-            self.shell.config._active_campaign_id = None
-
-        import shutil
-
-        shutil.rmtree(campaign_dir)
-        self.shell.console.print(f"[green]Deleted campaign:[/green] {name}")
-
-    def do_export(self, fmt: str = "csv") -> None:
         if not self._require_campaign():
             return
 
@@ -335,25 +374,99 @@ class CommandRegistry:
     def do_clear(self) -> None:
         os.system("clear" if os.name != "nt" else "cls")
 
+    def _help_table(self, rows: list[tuple[str, str]], title: str) -> None:
+        """Render a help table inside a cyan panel."""
+        table = Table(
+            show_header=False,
+            show_edge=False,
+            box=None,
+            padding=(0, 2),
+            expand=True,
+        )
+        table.add_column("Command", style="bold cyan", no_wrap=True, width=20)
+        table.add_column("Description")
+
+        for cmd, desc in rows:
+            table.add_row(cmd, desc)
+
+        self.shell.console.print()
+        self.shell.console.print(Panel(table, title=f"[bold]{title}[/bold]", border_style="cyan", expand=True))
+
     def do_help(self, command: str = None) -> None:
         if command:
-            text = HELP_TEXT.get(command)
-            if text:
-                self.shell.console.print(f"\n[bold cyan]{command}[/bold cyan]\n{text}\n")
+            handler = {
+                "set": self._help_set,
+                "campaign": self._help_campaign,
+                "export": self._help_export,
+            }.get(command)
+
+            if handler:
+                handler()
+            elif command in HELP_BRIEF:
+                self._help_table(
+                    [(command, HELP_BRIEF[command])],
+                    title=command,
+                )
             else:
                 self.shell.console.print(f"[red]Unknown command:[/red] {command}")
             return
 
-        table = Table(show_header=False, border_style="dim", padding=(0, 2))
-        table.add_column("Command", style="bold cyan", width=12)
-        table.add_column("Description")
+        self._help_table(
+            [
+                ("setup", "Launch the interactive setup wizard"),
+                ("set <key> <value>", "Change a config value (try 'help set')"),
+                ("show", "Display current configuration"),
+                ("", ""),
+                ("campaign list", "List all campaigns with stats"),
+                ("campaign create <name>", "Create a new campaign"),
+                ("campaign delete <name>", "Delete a campaign and all its data"),
+                ("", ""),
+                ("start", "Start the phishing server"),
+                ("stop", "Stop the running server"),
+                ("creds", "Show captured credentials"),
+                ("export <csv|json>", "Export credentials to a file"),
+                ("", ""),
+                ("clear", "Clear the screen"),
+                ("help [command]", "Detailed help for a command"),
+                ("exit", "Save and quit"),
+            ],
+            title="Commands",
+        )
 
-        for cmd, text in HELP_TEXT.items():
-            table.add_row(cmd, text.split("\n")[0])
+    def _help_set(self) -> None:
+        self._help_table(
+            [
+                ("campaign", "Set or create a campaign by name"),
+                ("template", "Phishing template to use (e.g. facebook)"),
+                ("port", "Server port (default: 8080)"),
+                ("host", "Listen address (default: 0.0.0.0)"),
+                ("max_attempts", "Login rounds before redirect (default: 2)"),
+                ("redirect_url", "Where to send victim after capture"),
+                ("enable_2fa", "Capture 2FA codes (true/false)"),
+                ("use_https", "HTTPS with self-signed cert (true/false)"),
+                ("verbose", "Verbose logging (true/false)"),
+            ],
+            title="set <key> <value>",
+        )
 
-        self.shell.console.print()
-        self.shell.console.print(table)
-        self.shell.console.print()
+    def _help_campaign(self) -> None:
+        self._help_table(
+            [
+                ("campaign list", "List all campaigns with stats"),
+                ("campaign create <name>", "Create a new campaign"),
+                ("campaign delete <name>", "Delete a campaign and all its data"),
+            ],
+            title="campaign",
+        )
+
+    def _help_export(self) -> None:
+        self._help_table(
+            [
+                ("export csv", "Export credentials as CSV"),
+                ("export json", "Export credentials as JSON"),
+            ],
+            title="export <format>",
+        )
 
     def do_exit(self) -> None:
         if self.shell.server_runner and self.shell.server_runner.is_running:
