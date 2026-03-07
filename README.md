@@ -1,17 +1,18 @@
 # Crystal Eye
 
-A modern, open-source phishing simulation CLI for cybersecurity professionals. I built this because tools like SEToolKit are outdated, clunky, and don't reflect how modern login pages actually look. Crystal Eye gives you pixel-perfect replicas, a clean interactive shell, real-time credential capture, 2FA relay support, and campaign-based organization — all in a single Python tool.
+A modern, open-source phishing simulation CLI for cybersecurity professionals. I built this because tools like SEToolKit are outdated, clunky, and don't reflect how modern login pages actually look. Crystal Eye gives you pixel-perfect replicas, a clean interactive shell, real-time credential capture, 2FA relay support, and campaign-based organization, all in a single Python tool.
 
 ## Features
 
-- **Pixel-perfect templates** — The Facebook template is built from the real page source, not a rough approximation
-- **Interactive REPL shell** — Tab completion, rich formatting, real-time credential panels
-- **2FA relay capture** — Victim enters login, sees a real-looking 2FA page, enters their code — you get both
-- **Campaign management** — Every engagement gets its own isolated campaign with its own database, certs, and exports
-- **Configurable attempt flow** — Set how many login rounds before redirecting to the real site
-- **Export** — Dump captured credentials to CSV or JSON
-- **HTTPS support** — Auto-generate self-signed certs per campaign
-- **Setup wizard** — Walk through the full config in 30 seconds, or use `set` for manual control
+- **Pixel-perfect templates**: The Facebook and Instagram templates are built from real page sources, not rough approximations
+- **Interactive REPL shell**: Tab completion, rich formatting, real-time credential panels
+- **2FA relay capture**: Victim enters login, sees a real-looking 2FA page, enters their code, and you get both
+- **Campaign management**: Every engagement gets its own isolated campaign with its own database, certs, and exports
+- **Configurable attempt flow**: Set how many login rounds before redirecting to the real site
+- **Export**: Dump captured credentials to CSV or JSON
+- **HTTPS support**: Auto-generate self-signed certs per campaign
+- **Built-in tunnels**: Expose your server with cloudflared or ngrok in one command
+- **Setup wizard**: Walk through the full config in 30 seconds, or use `set` for manual control
 
 ## Requirements
 
@@ -60,7 +61,7 @@ Launch Crystal Eye:
 uv run crystal-eye
 ```
 
-You'll see the banner and a legal disclaimer — type `yes` to accept. Then you're in the shell.
+You'll see the banner and a legal disclaimer. Type `yes` to accept, and you're in the shell.
 
 The fastest way to get running is the setup wizard:
 
@@ -74,7 +75,7 @@ It walks you through everything: campaign name, template, port, HTTPS, 2FA, and 
 
 ### Campaigns
 
-Everything in Crystal Eye is organized by campaign. Credentials, certs, exports — all scoped to the campaign directory under `~/.crystal-eye/campaigns/<name>/`.
+Everything in Crystal Eye is organized by campaign. Credentials, certs, and exports are all scoped to the campaign directory under `~/.crystal-eye/campaigns/<name>/`.
 
 ```
 crystal-eye > set campaign my-pentest
@@ -99,9 +100,10 @@ crystal-eye > set redirect_url https://www.facebook.com/
 
 | Key | Description | Default |
 |-----|-------------|---------|
-| `campaign` | Set or create a campaign by name | — |
-| `template` | Phishing template to use | — |
+| `campaign` | Set or create a campaign by name | |
+| `template` | Phishing template to use | |
 | `tunnel` | Tunnel provider (`cloudflared`, `ngrok`, `none`) | `none` |
+| `token` | Auth token for ngrok | |
 | `port` | Server listen port | `8080` |
 | `host` | Listen address | `0.0.0.0` |
 | `max_attempts` | Login rounds before redirect | `2` |
@@ -121,9 +123,9 @@ crystal-eye > set tunnel cloudflared
 crystal-eye > start
 ```
 
-When the server starts, Crystal Eye automatically launches the tunnel and prints the public URL. Both providers handle HTTPS for you — no need for `set use_https true` when using a tunnel.
+When the server starts, Crystal Eye automatically launches the tunnel and prints the public URL. Both providers handle HTTPS for you, so there's no need for `set use_https true` when using a tunnel.
 
-**ngrok** is bundled via `pyngrok` — it downloads and manages the binary for you automatically. You just need a free [ngrok account](https://ngrok.com/) and auth token (`ngrok config add-authtoken <token>`). Paid plans give you stable subdomains.
+**ngrok** is bundled via `pyngrok`, which downloads and manages the binary for you automatically. You just need a free [ngrok account](https://ngrok.com/) and to set your token with `set token <your-token>`. Paid plans give you stable subdomains.
 
 **cloudflared** gives you a free `*.trycloudflare.com` URL with no account required, but you need to install it yourself:
 
@@ -147,7 +149,7 @@ If you try to start with cloudflared and it's not installed, Crystal Eye will sh
 crystal-eye > start
 ```
 
-This requires a campaign and template to be set. The server runs in the background — your shell stays interactive. Navigate to `http://localhost:8080` (or whatever port you set) and you'll see the phishing page.
+This requires a campaign and template to be set. The server runs in the background, so your shell stays interactive. Navigate to `http://localhost:8080` (or whatever port you set) and you'll see the phishing page.
 
 ### How the Capture Flow Works
 
@@ -222,9 +224,9 @@ templates/facebook/
 └── static/          # CSS, images, favicon, etc.
 ```
 
-Currently included: **Facebook** (2025 design, pixel-perfect).
+Currently included: **Facebook** and **Instagram** (2026 designs, pixel-perfect).
 
-Adding a new template is straightforward — create the folder, write the HTML/CSS, define the manifest, and it's automatically discovered on next launch.
+Adding a new template is straightforward. Create the folder, write the HTML/CSS, define the manifest, and it's automatically discovered on next launch.
 
 ## Project Structure
 
@@ -244,12 +246,16 @@ crystal-eye/
 │   │   ├── routes.py        # Credential capture routes
 │   │   ├── runner.py        # Threaded uvicorn runner
 │   │   └── tls.py           # Self-signed cert generation
+│   ├── tunnel/              # Tunnel providers
+│   │   ├── cloudflared.py   # Cloudflare quick tunnels
+│   │   └── ngrok.py         # ngrok via pyngrok
 │   ├── templates/           # Template discovery + rendering
 │   ├── db/                  # SQLite storage (per-campaign)
 │   ├── display/             # Rich panels and tables
 │   └── export/              # CSV/JSON export
 ├── templates/               # Phishing page templates
-│   └── facebook/
+│   ├── facebook/
+│   └── instagram/
 └── tests/
 ```
 
